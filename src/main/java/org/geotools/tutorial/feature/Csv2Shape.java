@@ -112,5 +112,55 @@ public class Csv2Shape {
         newDataStore.createSchema(TYPE);
 
         // Write the feature data to the shapefile
+        Transaction transaction = new DefaultTransaction("create");
+
+        String typeName = newDataStore.getTypeNames()[0];
+        SimpleFeatureSource featureSource = newDataStore.getFeatureSource(typeName);
+        SimpleFeatureType SHAPE_TYPE = featureSource.getSchema();
+
+        System.out.println("SHAPE:"+SHAPE_TYPE);
+
+        if (featureSource instanceof SimpleFeatureStore) {
+            SimpleFeatureStore featureStore = (SimpleFeatureStore) featureSource;
+
+            SimpleFeatureCollection collection = new ListFeatureCollection(TYPE, features);
+            featureStore.setTransaction(transaction);
+            try {
+                featureStore.addFeatures(collection);
+                transaction.commit();
+            } catch (Exception problem) {
+                problem.printStackTrace();
+                transaction.rollback();
+            } finally {
+                transaction.close();
+            }
+            System.exit(0);
+        } else {
+            System.out.println(typeName + " does not support read/write access");
+            System.exit(1);
+        }
+    }
+
+    private static File getNewShapeFile(File csvFile) {
+        String path = csvFile.getAbsolutePath();
+        String newPath = path.substring(0, path.length() - 4) + ".shp";
+
+        JFileDataStoreChooser chooser = new JFileDataStoreChooser("shp");
+        chooser.setDialogTitle("Save Shapefile");
+        chooser.setSelectedFile(new File(newPath));
+
+        int returnVal = chooser.showSaveDialog(null);
+
+        if (returnVal != JFileDataStoreChooser.APPROVE_OPTION) {
+            System.exit(0);
+        }
+
+        File newFile = chooser.getSelectedFile();
+        if (newFile.equals(csvFile)) {
+            System.out.println("ERROR: CANNOT REPLACE " + csvFile);
+            System.exit(0);
+        }
+
+        return newFile;
     }
 }
